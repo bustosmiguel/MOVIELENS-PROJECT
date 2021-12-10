@@ -1,0 +1,342 @@
+---
+title: "MovieLens RMSE Project for course PH125.9X"
+author: "Miguel Angel Bustos Sáez"
+date: "11/30/2021"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+toc: yes
+toc_depth: 2
+---
+
+## **INTRODUCTION**
+
+Thanks to the covid-19, many companies were obligated to offer their services or products through internet. Some of them, used social networks, but others used the webpage, we`re phone viewers or recomendation viewers of good experiences, the importance it`s to have the option to choose a good recommended product or service, for that reason it`s very important to appreciate the good recommendation products and in this project, the main objective is to visualizing how an algorithm can reach that challange, how this project make a optimal recommendation of good movies, and for example, many apps, are doing this, international retailers and some national companies are determinatig the importance to implement intelligent and predicted ways to make good recommendation to customers, clients, netflix viewers or spotify listeners.
+
+One of the best recommendation systems is the RMSE method, and this project, it`s about a R Code, that can make a good recommendation to movie spectators.
+
+RMSE or Root-mean square of error.
+
+## **PART ONE**
+
+### **Edx data set at the glance**
+
+### Global Visualization Dataset
+
+This is EDX dataset table visualization, 0.5 to 5 rankings columns and year files from 1915 to 2008
+```¨{r}
+table(edx1$year, edx1$rating)
+```
+![](Captura/1.png)![Global](Captura/2.png)
+
+
+
+### Global Visualization Dataset
+
+Structure view
+
+```¨{r}
+str(edx)
+head(edx)
+dim(edx)
+
+```
+![](Captura/3.png)
+
+### Edx1 it`s the ordered data, Each variable in each column
+
+Each genre in each column, including year variable 
+
+![](Captura/4.png)
+
+
+### Edx1 ranking performance visualization between 2005 to 2008, taking a sample of 1000 observations
+
+The latest years of the data set visualization has a lot of action ranked values
+
+```¨{r}
+muestra1 = edx1 %>% 
+  filter(year %in% 2005:2008) %>%
+  sample_n(1000)
+
+ggplot(data = muestra1, aes(genres1, rating))+
+  geom_boxplot(outlier.shape = NA)+
+  geom_point(position = "jitter", aes(color = genres1))+
+  theme_economist()+
+  labs(x = "Genres", y = "Rating 1 - 5", title = "Boxplot of Genres - Ratings 2005 to 2008, sample of N = 1000")
+```
+
+![](Captura/5.png)
+
+
+
+### Edx1 ranking distribution
+
+Now the ranked distribution from 0.5 to 5 is visualizing through this barplot
+```¨{r}
+edx1 %>% 
+  ggplot(aes(rating))+
+  geom_histogram(binwidth = 0.4, fill = "royalblue", color = "skyblue")+
+  theme_economist()+
+  labs(x = "Rating", y = "Distribution Visual Proportion", title = "EDX RATING DISTRIBUTION")
+```
+
+![](Captura/6.png)
+
+
+### Frequency of movies per Genre, the most viewed
+
+This shows the most movies viewed in all data set, the leaders are; Action, Comedy and Drama
+
+```¨{r}
+genres_frequency <- as.data.frame(table(edx1$genres1, edx1$rating))
+class(genres_frequency)
+
+gf <- ggplot(data = genres_frequency)
+gf + geom_point(aes(x = Var1, y = Freq/10))+
+  labs(x = "All EDX Genres", y = "Frequency", title = "GENRES FREQUENCY OF MOVIES PER GENRE - EDX")+
+  theme_economist()+
+  theme(axis.text.x = element_text(angle = 85, vjust = 0.6))
+```
+
+![](Captura/7.png)
+
+
+### Action Movie Frequency, that have a rating of 5
+
+The dark knight and the Iron Man are highly the most ranked movies of 5 ranked movies
+```¨{r}
+top_watched <- edx1 %>% 
+  filter(rating == "5", genres1 == "Action", year == "2008")
+
+tg <- ggplot(data = top_watched)
+tg + geom_bar(aes(x = title))+
+  labs(x = "Action Movies (Rating of 5)", y = "Frequency watched", title = "ACTION MOVIE FREQUENCY, THAT HAVE A RATING OF 5")+
+  theme_economist()+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.8, color = "darkblue", face = "italic", hjust = 1))
+```
+
+![](Captura/8.png)
+
+
+
+
+
+
+
+## **PART TWO**
+
+### **Modeling data**
+
+The part 1 was critical to ordered the variables of genre and year and visualize it Now, that we have these variables in Edx, we can work more efficient in a RMSE The Root-mean-square error (RMSE) is the accuracy measure that cslculate the prediction error rate. What are the residuals between "actual rating" and "predicted rating"? RMSE gives that answer In other words, the RMSE it`s the measure of how spread out these residuals are and how concentrated the data is around the line of best fit So it`s the difference between "Actual Ratings" and the Forecast or "predicted ratings"
+
+test_set & forecast_rating
+
+test_set
+```¨{r}
+
+mu <- mean(edx1$rating)
+
+set.seed(1)
+test_set %>% 
+  left_join(edx1 %>% 
+              group_by(movieId) %>% 
+              summarise(fe = mean(rating - mu)), by = "movieId")
+join <- test_set %>% 
+  left_join(edx1 %>% 
+              group_by(movieId) %>% 
+              summarise(fe = mean(rating - mu)), by = "movieId")
+
+
+forecast_rating <- mu + join$fe 
+forecast_rating 
+```
+
+forecast_rating
+
+
+Create bootstrap sample with createDataPartition 
+```¨{r}
+
+set.seed(1)
+test_index <- createDataPartition(y = edx1$rating, times = 1, p = 0.5, list = FALSE)
+train_set <- edx1[-test_index,]
+test_set <- edx1[test_index,]
+```
+
+Visualizing the data sets
+```¨{r}
+str(edx1)
+str(test_index) 
+str(train_set)
+str(test_set)
+```
+
+Selecting the test_set_r and the forecast_rating
+```¨{r}
+valid <- test_set %>% 
+  semi_join(edx1, by = "movieId") %>% 
+  semi_join(edx1, by = "userId") #Return all rows from x with a match in y
+
+length(test_set) 
+
+test_set_r <- test_set$rating
+forecast_rating <- mu + join$fe
+```
+
+
+
+
+
+
+
+## **First RMSE** [1] 0.9436553 ###
+
+Using the test_set_r: 0.5 to 5.0, and forecast_rating: different values (2.939235 3.738641 3.419572...)
+
+```¨{r}
+mu <- mean(edx1$rating)
+mu
+
+set.seed(1)
+difference <- test_set_r-forecast_rating
+rmse <- sqrt(mean(difference^2))
+
+rmse
+[1] 0.9436553
+
+or:
+
+sqrt(mean((test_set_r-forecast_rating)^2))
+
+[1] 0.9436553
+```
+
+
+
+
+
+
+
+## **Second RMSE** [1] 1.102293 ###
+
+Using the test_set_r: 0.5 to 5.0, and now forecast_rating: using ceiling function, that rounds up to the nearest integer, with more realistic number. This way shows that the residual reaches: [1] 1.102293.- And this is still too far:
+
+```¨{r}
+set.seed(1)
+forecast_rating2 <- ceiling(forecast_rating)
+sqrt(mean((test_set_r-forecast_rating2)^2))
+[1] 1.102293
+```
+
+
+
+
+
+
+
+
+
+## **Third RMSE** [1] 0.7399887 ###
+
+## ***Customizing what`s good for the Movie Espectators***
+
+Creating two vectors called test_sample and forecast_sample, we obtain #[1] 0.7399887 residuals value choosing in the range from 3.5 to 5.0 range.
+
+Making good recommendations movies, over 3.5 ranked movies, is the way to get an optimal RMSE, for that reason, it`s neccessary to fix some parameters, that make a better recommendations:
+
+Just replace the parameter, each of these, here we have some vectors parameters:
+
+```¨{r}
+parameter1 <- 3.0 
+parameter2 <- 3.5
+parameter3 <- 4.0
+parameter4 <- 4.5
+parameter5 <- 5.0
+```
+What will be the RMSE results, in the recommendation is more than these ratings?, here we have some vectors parameters results:
+```¨{r}
+parameter1 : approximately [1] 1.000417 RMSE result
+parameter2 : approximately [1] 0.7399887 RMSE result
+parameter3 : approximately [1] 0.6379002 RMSE result
+parameter4 : approximately [1] 0.3106445 RMSE result
+parameter5 : approximately [1] 0 RMSE result, this is because it`s the limit ranking
+```
+The best RMSE it`s obtained using parameter3 [1] 0.6379002 rmse result, anyway , just using parameter2, we obtained a great recommendation [1] 0.7399887 RMSE result.
+
+These vector parameters, can be changed in this code, and we will have different RMSE results, this code including >= symbol, so it is the best way to make recommendations to clients and obtain a better RMSE, making good recommensations movies, over 3.5 ranked value, that value is parameter 2:
+
+```¨{r}
+set.seed(1)
+index1 <- edx1$rating >= parameter2 #<- You must here write the parameter vector 1, 2, 3, 4 or 5
+test_sample <- edx1$rating[index1] %>% sample(size = 3000)
+test_sample
+
+set.seed(1)
+index2 <- join$rating >= parameter2 #<- You must here write the parameter vector 1, 2, 3, 4 or 5
+forecast_sample <- join$rating[index2] %>% sample(size = 3000) 
+forecast_simple_mu <- join$fe[forecast_sample]+ mu 
+forecast_sample 
+
+```
+The sample N = 3000 ranking distribution, as ECDF Empirical Distribution Function
+
+![](Captura/9.png)
+
+To obtain a RMSE value
+
+```¨{r}
+sqrt(mean((test_sample-forecast_sample)^2))
+```
+
+
+
+
+
+
+
+
+
+
+## **CONCLUSION AND RECOMMENDATION**
+
+Making an adecuated recommendation more than 3.5, we can obtain 0.7399887 rmse result.
+For that reason, if the intention is to make a good recommendation, the critical decision is recommend a good movie to the viewers, that recommendation is over 3.5, and the gap will be more close, as a residual of 0.7399887 RMSE.
+
+Nowadays many companies are offering online products and services, they won`t recommend a bad products, books, movies, licences, etcetera, these companies will recommend products well evaluated, to guarantee a great experience, happens the same in this project, it is necessary make good recomendations.
+
+The recommendation is to recommend all movies that are equal or more than 3.5 ranked, so the spread will be roughly 0.7399887 RMSE and that guarantee the clients will have a great experience.
+
+
+
+
+## **Biography**
+
+Data Science HarvardX - [Professional Certificate in Data Science](https://www.edx.org/es/professional-certificate/harvardx-data-science)
+
+Raphael Irizarry onnline dsbook - [Introduction to Data Science](https://rafalab.github.io/dsbook/)
+
+Raphael Irizarry book - [Introduction to Data Science, CRC](https://www.amazon.com/-/es/Rafael-Irizarry/dp/0367357984)
+
+Raphael Irizarry - [Webpage](https://rafalab.github.io/)
+
+ImperialX, Imperial College Business School - [EDX Course, Data Analysis Essentials](https://www.edx.org/es/course/data-analysis-essentials)
+
+Root Mean Squared Deviation - [Wikipedia](https://en.wikipedia.org/wiki/Root-mean-square_deviation)
+
+
+
+## **About optimizing RMSE or choose samples**
+
+What is a Recommender System? A recommender system is an intelligent system that predicts the rating and preferences of users on products - [ANALITICALSINDIAMAG](https://analyticsindiamag.com/singular-value-decomposition-svd-application-recommender-system/)
+
+The ratings members provided for recent movies provided more predictive power than older ratings - [2007 NETFLIX PRIZE](https://gibsonbiddle.medium.com/a-brief-history-of-netflix-personalization-1f2debf010a1)
+
+They can sample a few videos before settling on one - [TECHDIRT](https://www.techdirt.com/articles/20120409/03412518422/why-netflix-never-implemented-algorithm-that-won-netflix-1-million-challenge.shtml)
+
+Root-mean square of the differences between the predicted values and observed values - Even though it is feasible to conduct manual classification, it is generally very time consuming and error prone when dealing with a large number of samples - [NATURE](https://www.nature.com/articles/s41438-021-00560-9)
+
+Having an accurate understanding of starch supports critical ration development and drives economic decisions. Invest in proper sampling, sample frequently to understand true variation - [HOARDS](https://hoards.com/article-30870-starch-brings-testing-concerns-to-corn-silage.html)
+
+
